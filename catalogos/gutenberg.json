@@ -1,0 +1,25 @@
+[
+  {"id": 1, "titulo": "Crime e Castigo", "autor": "Fiódor Dostoiévski", "genero": "Literatura Clássica", "ano": 1866, "idioma": "Inglês", "gutenberg_id": 2554, "nota": "Edição em inglês: Crime and Punishment."},
+  {"id": 2, "titulo": "Os Irmãos Karamázov", "autor": "Fiódor Dostoiévski", "genero": "Literatura Clássica", "ano": 1880, "idioma": "Inglês", "gutenberg_id": 28054, "nota": "Edição em inglês: The Brothers Karamazov."},
+  {"id": 3, "titulo": "A Metamorfose", "autor": "Franz Kafka", "genero": "Literatura Clássica", "ano": 1915, "idioma": "Inglês", "gutenberg_id": 5200, "nota": "Edição em inglês: Metamorphosis."},
+  {"id": 4, "titulo": "O Retrato de Dorian Gray", "autor": "Oscar Wilde", "genero": "Literatura Clássica", "ano": 1890, "idioma": "Inglês", "gutenberg_id": 174, "nota": "Edição em inglês: The Picture of Dorian Gray."},
+  {"id": 5, "titulo": "Memórias do Subsolo", "autor": "Fiódor Dostoiévski", "genero": "Literatura Clássica", "ano": 1864, "idioma": "Inglês", "gutenberg_id": 600, "nota": "Edição em inglês: Notes from the Underground."},
+
+  {"id": 6, "titulo": "O Mágico de Oz", "autor": "L. Frank Baum", "genero": "Fantasia e Aventura", "ano": 1900, "idioma": "Inglês", "gutenberg_id": 55, "nota": "Edição em inglês: The Wonderful Wizard of Oz."},
+  {"id": 7, "titulo": "Alice no País das Maravilhas", "autor": "Lewis Carroll", "genero": "Fantasia e Aventura", "ano": 1865, "idioma": "Inglês", "gutenberg_id": 11, "nota": "Edição em inglês: Alice's Adventures in Wonderland."},
+  {"id": 8, "titulo": "A Princesa e o Goblin", "autor": "George MacDonald", "genero": "Fantasia e Aventura", "ano": 1872, "idioma": "Inglês", "gutenberg_id": 708, "nota": "Edição em inglês: The Princess and the Goblin."},
+  {"id": 9, "titulo": "The King of Elfland's Daughter", "autor": "Lord Dunsany", "genero": "Fantasia e Aventura", "ano": 1924, "idioma": "Inglês", "gutenberg_id": 61077},
+  {"id": 10, "titulo": "The Wood Beyond the World", "autor": "William Morris", "genero": "Fantasia e Aventura", "ano": 1894, "idioma": "Inglês", "gutenberg_id": 3055},
+
+  {"id": 11, "titulo": "Dom Casmurro", "autor": "Machado de Assis", "genero": "Literatura para Vestibulares", "ano": 1899, "idioma": "Português", "gutenberg_id": 55752},
+  {"id": 12, "titulo": "Memórias Póstumas de Brás Cubas", "autor": "Machado de Assis", "genero": "Literatura para Vestibulares", "ano": 1881, "idioma": "Português", "gutenberg_id": 54829, "nota": "A edição digital mantém a grafia histórica no texto."},
+  {"id": 13, "titulo": "O Cortiço", "autor": "Aluísio Azevedo", "genero": "Literatura para Vestibulares", "ano": 1890, "idioma": "Português", "gutenberg_id": 69187},
+  {"id": 14, "titulo": "Iracema", "autor": "José de Alencar", "genero": "Literatura para Vestibulares", "ano": 1865, "idioma": "Português", "gutenberg_id": 67740},
+  {"id": 15, "titulo": "O Alienista", "autor": "Machado de Assis", "genero": "Literatura para Vestibulares", "ano": 1882, "idioma": "Português", "gutenberg_id": 57001, "nota": "O conto está no volume Papéis Avulsos; selecione O Alienista no índice."},
+
+  {"id": 21, "titulo": "Drácula", "autor": "Bram Stoker", "genero": "Mistério, Suspense e Terror", "ano": 1897, "idioma": "Inglês", "gutenberg_id": 345, "nota": "Edição em inglês: Dracula."},
+  {"id": 22, "titulo": "Frankenstein", "autor": "Mary Shelley", "genero": "Mistério, Suspense e Terror", "ano": 1818, "idioma": "Inglês", "gutenberg_id": 84},
+  {"id": 23, "titulo": "O Médico e o Monstro", "autor": "Robert Louis Stevenson", "genero": "Mistério, Suspense e Terror", "ano": 1886, "idioma": "Inglês", "gutenberg_id": 43, "nota": "Edição em inglês: Strange Case of Dr Jekyll and Mr Hyde."},
+  {"id": 24, "titulo": "O Cão dos Baskervilles", "autor": "Arthur Conan Doyle", "genero": "Mistério, Suspense e Terror", "ano": 1902, "idioma": "Inglês", "gutenberg_id": 3070, "nota": "Edição em inglês: The Hound of the Baskervilles."},
+  {"id": 25, "titulo": "The Woman in White", "autor": "Wilkie Collins", "genero": "Mistério, Suspense e Terror", "ano": 1860, "idioma": "Inglês", "gutenberg_id": 583, "nota": "Substitui O Misterioso Caso de Styles na seleção inicial."}
+]
