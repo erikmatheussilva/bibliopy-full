@@ -29,6 +29,7 @@ class InterfaceBiblioteca:
         self.filtroGenero: ttk.Combobox | None = None
         self._detalhes: tk.StringVar | None = None
         self._status: tk.StringVar | None = None
+        self._logoImagem: tk.PhotoImage | None = None
         self._botaoAbrir: ttk.Button | None = None
         self._janelaLeitor: tk.Toplevel | None = None
         self._documentoLeitor: pdfium.PdfDocument | None = None
@@ -74,14 +75,9 @@ class InterfaceBiblioteca:
 
         cabecalho = ttk.Frame(pagina, style="Bibliopy.TFrame")
         cabecalho.pack(fill="x", pady=(0, 20))
-        logo = tk.Canvas(cabecalho, width=54, height=54, bg=FUNDO, highlightthickness=0)
+        self._logoImagem = tk.PhotoImage(file=str(Path(__file__).resolve().parent.parent / "logo.png"))
+        logo = ttk.Label(cabecalho, image=self._logoImagem, style="Bibliopy.TLabel")
         logo.pack(side="left", padx=(0, 12))
-        logo.create_oval(2, 2, 52, 52, fill=MARINHO, outline="")
-        logo.create_polygon(12, 17, 26, 20, 26, 40, 12, 37, fill=BRANCO, outline="")
-        logo.create_polygon(28, 20, 42, 17, 42, 37, 28, 40, fill=BRANCO, outline="")
-        logo.create_line(27, 20, 27, 41, fill=VERDE_AGUA, width=2)
-        logo.create_rectangle(35, 24, 38, 27, fill=VERDE_AGUA, outline="")
-        logo.create_rectangle(35, 29, 38, 32, fill=VERDE_AGUA, outline="")
         titulos = ttk.Frame(cabecalho, style="Bibliopy.TFrame")
         titulos.pack(side="left")
         ttk.Label(titulos, text="BiblioPy", style="Titulo.TLabel").pack(anchor="w")
