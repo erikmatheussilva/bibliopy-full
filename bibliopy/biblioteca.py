@@ -68,11 +68,11 @@ class Biblioteca:
         if not isinstance(ocultos, list) or not isinstance(registros, list):
             raise ValueError("O arquivo de dados está inválido.")
         if any(
-            isinstance(id, bool) or not isinstance(id, int) or id not in self._ids_catalogo
+            isinstance(id, bool) or not isinstance(id, int) or id <= 0
             for id in ocultos
         ):
             raise ValueError("O arquivo contém livros ocultos desconhecidos.")
-        novos_ocultos = set(ocultos)
+        novos_ocultos = set(ocultos) & self._ids_catalogo
 
         novos_livros = {
             id: livro
@@ -83,6 +83,8 @@ class Biblioteca:
         for registro in registros:
             if not isinstance(registro, dict):
                 raise ValueError("Registro de livro inválido no arquivo de dados.")
+            if registro.get("tipo") == "online" and not registro.get("url_pdf"):
+                continue  # Dados antigos de páginas web não entram no acervo de PDFs.
             comum = dict(
                 id=registro["id"],
                 titulo=registro["titulo"],
@@ -96,7 +98,7 @@ class Biblioteca:
             if registro.get("tipo") == "pdf":
                 livro = LivroPDFLocal(**comum, caminhoArquivo=registro["caminho"])
             elif registro.get("tipo") == "online":
-                livro = LivroOnline(**comum, url=registro["url"])
+                livro = LivroOnline(**comum, url=registro["url"], urlPdf=registro.get("url_pdf"))
             else:
                 raise ValueError("Tipo de livro desconhecido no arquivo de dados.")
             if livro.genero not in GENEROS or livro.id in self._ids_catalogo:
@@ -129,6 +131,7 @@ class Biblioteca:
                 registro.update(tipo="pdf", caminho=str(livro.caminhoArquivo))
             else:
                 registro.update(tipo="online", url=livro.url)
+                registro["url_pdf"] = livro.urlPdf
             adicionados.append(registro)
         dados = {
             "versao": 1,
@@ -194,7 +197,7 @@ class Biblioteca:
     def obterLivro(self, id: int) -> Livro | None:
         return self.livros.get(id)
 
-    def abrirLivro(self, id: int) -> bool | Path:
+    def abrirLivro(self, id: int) -> bool | Path | bytes:
         livro = self.obterLivro(id)
         return livro.abrir() if livro is not None else False
 

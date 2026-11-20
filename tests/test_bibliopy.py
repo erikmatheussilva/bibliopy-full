@@ -1,6 +1,7 @@
 """Fluxos essenciais do acervo sem abrir janelas ou navegador."""
 
 from collections import Counter
+from io import BytesIO
 import json
 from pathlib import Path
 import tempfile
@@ -12,7 +13,6 @@ from bibliopy import (
     LivroOnline,
     LivroPDFLocal,
     RepositorioGreenTeaPress,
-    RepositorioGutenberg,
 )
 from bibliopy.biblioteca import GENEROS
 
@@ -22,30 +22,30 @@ RAIZ = Path(__file__).resolve().parents[1]
 
 def carregar_biblioteca() -> Biblioteca:
     biblioteca = Biblioteca()
-    biblioteca.adicionarRepositorio(RepositorioGutenberg(RAIZ / "catalogos" / "gutenberg.json"))
     biblioteca.adicionarRepositorio(RepositorioGreenTeaPress(RAIZ / "catalogos" / "greenteapress.json"))
     biblioteca.carregarCatalogos()
     return biblioteca
 
 
 class TestCatalogo(unittest.TestCase):
-    def test_acervo_inicial_tem_25_livros_e_cinco_por_categoria(self) -> None:
+    def test_acervo_inicial_tem_apenas_cinco_pdfs(self) -> None:
         biblioteca = carregar_biblioteca()
         livros = biblioteca.listarLivros()
-        self.assertEqual(len(livros), 25)
-        self.assertEqual(Counter(livro.genero for livro in livros), {genero: 5 for genero in GENEROS})
+        self.assertEqual(len(livros), 5)
+        self.assertEqual(Counter(livro.genero for livro in livros), {"Programação e Tecnologia": 5})
         self.assertEqual(sum(isinstance(livro, LivroPDFLocal) for livro in livros), 2)
-        self.assertEqual(sum(isinstance(livro, LivroOnline) for livro in livros), 23)
+        self.assertEqual(sum(isinstance(livro, LivroOnline) for livro in livros), 3)
+        self.assertEqual(sum(isinstance(livro, LivroOnline) and livro.urlPdf is not None for livro in livros), 3)
         for livro in livros:
             if isinstance(livro, LivroPDFLocal):
                 self.assertTrue(livro.verificarArquivo())
 
-    def test_busca_ignora_acentos_e_combina_com_filtro(self) -> None:
+    def test_busca_e_filtro_encontram_pdfs_do_acervo(self) -> None:
         biblioteca = carregar_biblioteca()
-        self.assertEqual([livro.titulo for livro in biblioteca.buscarPorTitulo("memorias postumas")], ["Memórias Póstumas de Brás Cubas"])
-        self.assertIn("Dom Casmurro", [livro.titulo for livro in biblioteca.buscarPorAutor("machado")])
-        self.assertEqual(len(biblioteca.filtrarPorGenero("fantasia e aventura")), 5)
-        self.assertEqual(biblioteca.obterLivro(15).fonte, "Project Gutenberg")
+        self.assertEqual([livro.titulo for livro in biblioteca.buscarPorTitulo("complexity")], ["Think Complexity, 2nd Edition"])
+        self.assertEqual(len(biblioteca.buscarPorAutor("downey")), 5)
+        self.assertEqual(len(biblioteca.filtrarPorGenero("programacao e tecnologia")), 5)
+        self.assertEqual(biblioteca.obterLivro(18).fonte, "Green Tea Press")
 
 
 class TestPersistencia(unittest.TestCase):
@@ -53,39 +53,40 @@ class TestPersistencia(unittest.TestCase):
         with tempfile.TemporaryDirectory() as pasta:
             arquivo = Path(pasta) / "usuario.json"
             biblioteca = carregar_biblioteca()
-            biblioteca.removerLivro(1)
+            biblioteca.removerLivro(16)
             novo = LivroOnline(
                 biblioteca.proximoId(),
                 "Livro de teste",
                 "Autora Exemplo",
                 GENEROS[0],
                 2020,
-                "https://example.org/livro",
+                "https://example.org/livro.pdf",
+                urlPdf="https://example.org/livro.pdf",
             )
             biblioteca.adicionarLivro(novo)
             biblioteca.salvarDados(arquivo)
 
             salvo = json.loads(arquivo.read_text(encoding="utf-8"))
-            self.assertEqual(salvo["ocultos"], [1])
+            self.assertEqual(salvo["ocultos"], [16])
             self.assertEqual(len(salvo["adicionados"]), 1)
             restaurada = carregar_biblioteca()
             restaurada.carregarDados(arquivo)
-            self.assertIsNone(restaurada.obterLivro(1))
+            self.assertIsNone(restaurada.obterLivro(16))
             self.assertEqual(restaurada.obterLivro(novo.id).titulo, "Livro de teste")
-            self.assertEqual(len(restaurada.listarLivros()), 25)
+            self.assertEqual(len(restaurada.listarLivros()), 5)
 
             restaurada.removerLivro(novo.id)
             restaurada.salvarDados(arquivo)
             novamente = carregar_biblioteca()
             novamente.carregarDados(arquivo)
             self.assertIsNone(novamente.obterLivro(novo.id))
-            self.assertEqual(len(novamente.listarLivros()), 24)
+            self.assertEqual(len(novamente.listarLivros()), 4)
 
     def test_dados_invalidos_nao_alteram_o_acervo(self) -> None:
         with tempfile.TemporaryDirectory() as pasta:
             arquivo = Path(pasta) / "usuario.json"
             for conteudo in (
-                '{"versao": 1, "ocultos": [999], "adicionados": []}',
+                '{"versao": 1, "ocultos": [0], "adicionados": []}',
                 '{"versao": 1, "ocultos": [[1]], "adicionados": []}',
             ):
                 with self.subTest(conteudo=conteudo):
@@ -93,7 +94,18 @@ class TestPersistencia(unittest.TestCase):
                     biblioteca = carregar_biblioteca()
                     with self.assertRaises(ValueError):
                         biblioteca.carregarDados(arquivo)
-                    self.assertEqual(len(biblioteca.listarLivros()), 25)
+                    self.assertEqual(len(biblioteca.listarLivros()), 5)
+
+    def test_dados_antigos_nao_reintroduzem_paginas_web(self) -> None:
+        with tempfile.TemporaryDirectory() as pasta:
+            arquivo = Path(pasta) / "usuario.json"
+            arquivo.write_text(json.dumps({"versao": 1, "ocultos": [1], "adicionados": [
+                {"tipo": "online", "id": 10001, "url": "https://example.org/livro"}
+            ]}), encoding="utf-8")
+            biblioteca = carregar_biblioteca()
+            biblioteca.carregarDados(arquivo)
+            self.assertEqual(len(biblioteca.listarLivros()), 5)
+            self.assertIsNone(biblioteca.obterLivro(10001))
 
     def test_pdf_pessoal_persiste_com_seu_caminho(self) -> None:
         with tempfile.TemporaryDirectory() as pasta:
@@ -114,6 +126,20 @@ class TestPersistencia(unittest.TestCase):
             self.assertEqual(recuperado.caminhoArquivo, caminho.resolve())
             self.assertTrue(recuperado.verificarArquivo())
 
+    def test_pdf_online_pessoal_persiste_com_seu_endereco(self) -> None:
+        with tempfile.TemporaryDirectory() as pasta:
+            arquivo = Path(pasta) / "usuario.json"
+            biblioteca = carregar_biblioteca()
+            livro = LivroOnline(
+                biblioteca.proximoId(), "Meu PDF online", "Autora", GENEROS[0], 2020,
+                "https://example.org/livro", urlPdf="https://example.org/livro.pdf",
+            )
+            biblioteca.adicionarLivro(livro)
+            biblioteca.salvarDados(arquivo)
+            restaurada = carregar_biblioteca()
+            restaurada.carregarDados(arquivo)
+            self.assertEqual(restaurada.obterLivro(livro.id).urlPdf, "https://example.org/livro.pdf")
+
 
 class TestAbertura(unittest.TestCase):
     def test_pdf_local_entrega_caminho_validado_para_leitor_interno(self) -> None:
@@ -126,13 +152,26 @@ class TestAbertura(unittest.TestCase):
             caminho.write_bytes(b"%PDF-1.4\nconteudo de teste")
             self.assertEqual(livro.abrir(), caminho.resolve())
 
-    def test_livro_online_usa_o_navegador(self) -> None:
-        livro = LivroOnline(10001, "Exemplo", "Autora", GENEROS[0], 2020, "https://example.org/livro")
-        with patch("bibliopy.livros.webbrowser.open", return_value=True) as abrir:
-            self.assertTrue(livro.abrir())
-            abrir.assert_called_once_with("https://example.org/livro")
+    def test_livro_online_exige_pdf_direto(self) -> None:
         with self.assertRaises(ValueError):
-            LivroOnline(10002, "Exemplo", "Autora", GENEROS[0], 2020, "file:///segredo")
+            LivroOnline(10002, "Exemplo", "Autora", GENEROS[0], 2020, "https://example.org/pagina")
+
+    def test_pdf_online_e_recebido_em_memoria_e_rejeita_resposta_invalida(self) -> None:
+        livro = LivroOnline(
+            10001, "Exemplo", "Autora", GENEROS[0], 2020,
+            "https://example.org/livro", urlPdf="https://example.org/livro.pdf",
+        )
+        conteudo = b"%PDF-1.4\nconteudo de teste"
+        with patch("bibliopy.livros.urlopen", return_value=BytesIO(conteudo)) as obter:
+            self.assertEqual(livro.abrir(), conteudo)
+            self.assertEqual(obter.call_args.kwargs["timeout"], 20)
+        with patch("bibliopy.livros.urlopen", return_value=BytesIO(b"<html>nao e pdf</html>")):
+            with self.assertRaisesRegex(ValueError, "PDF válido"):
+                livro.baixarPdf()
+        with patch.object(livro, "LIMITE_PDF", 5):
+            with patch("bibliopy.livros.urlopen", return_value=BytesIO(conteudo)):
+                with self.assertRaisesRegex(ValueError, "50 MB"):
+                    livro.baixarPdf()
 
 
 if __name__ == "__main__":

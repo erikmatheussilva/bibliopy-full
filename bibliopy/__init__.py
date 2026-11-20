@@ -6,7 +6,6 @@ from .livros import Livro, LivroOnline, LivroPDFLocal
 from .repositorios import (
     RepositorioDigital,
     RepositorioGreenTeaPress,
-    RepositorioGutenberg,
 )
 
 __all__ = [
@@ -17,5 +16,4 @@ __all__ = [
     "LivroPDFLocal",
     "RepositorioDigital",
     "RepositorioGreenTeaPress",
-    "RepositorioGutenberg",
 ]

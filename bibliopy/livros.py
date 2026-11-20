@@ -2,8 +2,8 @@
 
 from abc import ABC, abstractmethod
 from pathlib import Path
+from urllib.request import Request, urlopen
 from urllib.parse import urlparse
-import webbrowser
 
 
 class Livro(ABC):
@@ -44,8 +44,8 @@ class Livro(ABC):
         self.nota = nota.strip()
 
     @abstractmethod
-    def abrir(self) -> bool | Path:
-        """Entrega o PDF local ao leitor ou abre o endereço online."""
+    def abrir(self) -> Path | bytes:
+        """Entrega um PDF local ou online ao leitor."""
 
     def exibirDados(self) -> str:
         dados = (
@@ -103,6 +103,8 @@ class LivroPDFLocal(Livro):
 
 
 class LivroOnline(Livro):
+    LIMITE_PDF = 50 * 1024 * 1024
+
     def __init__(
         self,
         id: int,
@@ -114,6 +116,7 @@ class LivroOnline(Livro):
         idioma: str = "Português",
         fonte: str = "Pessoal",
         nota: str = "",
+        urlPdf: str | None = None,
     ) -> None:
         super().__init__(id, titulo, autor, genero, ano, idioma, fonte, nota)
         if not isinstance(url, str):
@@ -123,6 +126,24 @@ class LivroOnline(Livro):
         if endereco.scheme not in {"http", "https"} or not endereco.netloc:
             raise ValueError("Informe um endereço HTTP ou HTTPS válido.")
         self.url = url
+        if not isinstance(urlPdf, str):
+            raise ValueError("Informe um endereço HTTP ou HTTPS para o PDF online.")
+        urlPdf = urlPdf.strip()
+        endereco_pdf = urlparse(urlPdf)
+        if endereco_pdf.scheme not in {"http", "https"} or not endereco_pdf.netloc:
+            raise ValueError("Informe um endereço HTTP ou HTTPS para o PDF online.")
+        self.urlPdf = urlPdf
 
-    def abrir(self) -> bool:
-        return webbrowser.open(self.url)
+    def baixarPdf(self) -> bytes:
+        """Recebe um PDF direto em memória, sem gravá-lo no acervo."""
+        requisicao = Request(self.urlPdf, headers={"User-Agent": "BiblioPy/1.0"})
+        with urlopen(requisicao, timeout=20) as resposta:
+            conteudo = resposta.read(self.LIMITE_PDF + 1)
+        if len(conteudo) > self.LIMITE_PDF:
+            raise ValueError("O PDF online ultrapassa o limite de 50 MB.")
+        if not conteudo.startswith(b"%PDF-"):
+            raise ValueError("O endereço não retornou um PDF válido.")
+        return conteudo
+
+    def abrir(self) -> bytes:
+        return self.baixarPdf()

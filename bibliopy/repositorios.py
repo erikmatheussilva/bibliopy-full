@@ -1,4 +1,4 @@
-"""Catálogos selecionados das duas fontes da proposta."""
+"""Catálogo de livros que abrem no leitor do BiblioPy."""
 
 from abc import ABC, abstractmethod
 import json
@@ -22,32 +22,6 @@ class RepositorioDigital(ABC):
     @abstractmethod
     def obterLivros(self) -> list[Livro]:
         """Converte registros do catálogo em objetos Livro."""
-
-
-class RepositorioGutenberg(RepositorioDigital):
-    def __init__(self, arquivoCatalogo: str | Path) -> None:
-        super().__init__("Project Gutenberg", arquivoCatalogo)
-
-    def obterLivros(self) -> list[Livro]:
-        livros = []
-        for registro in self._ler_registros():
-            numero = registro["gutenberg_id"]
-            if isinstance(numero, bool) or not isinstance(numero, int) or numero <= 0:
-                raise ValueError("O identificador do Gutenberg deve ser positivo.")
-            livros.append(
-                LivroOnline(
-                    id=registro["id"],
-                    titulo=registro["titulo"],
-                    autor=registro["autor"],
-                    genero=registro["genero"],
-                    ano=registro["ano"],
-                    url=f"https://www.gutenberg.org/ebooks/{numero}",
-                    idioma=registro["idioma"],
-                    fonte=self.nome,
-                    nota=registro.get("nota", ""),
-                )
-            )
-        return livros
 
 
 class RepositorioGreenTeaPress(RepositorioDigital):
@@ -76,5 +50,7 @@ class RepositorioGreenTeaPress(RepositorioDigital):
             if caminho is not None and caminho.is_file():
                 livros.append(LivroPDFLocal(**dados, caminhoArquivo=caminho))
             else:
-                livros.append(LivroOnline(**dados, url=registro["url"]))
+                if not registro.get("url_pdf"):
+                    raise FileNotFoundError(f"PDF indisponível para: {registro['titulo']}")
+                livros.append(LivroOnline(**dados, url=registro["url"], urlPdf=registro["url_pdf"]))
         return livros

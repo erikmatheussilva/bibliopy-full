@@ -8,14 +8,12 @@ from bibliopy import (
     Biblioteca,
     InterfaceBiblioteca,
     RepositorioGreenTeaPress,
-    RepositorioGutenberg,
 )
 
 
 def main() -> int:
     pasta = Path(__file__).resolve().parent
     biblioteca = Biblioteca()
-    biblioteca.adicionarRepositorio(RepositorioGutenberg(pasta / "catalogos" / "gutenberg.json"))
     biblioteca.adicionarRepositorio(RepositorioGreenTeaPress(pasta / "catalogos" / "greenteapress.json"))
     arquivo_dados = pasta / "dados" / "usuario.json"
     try:

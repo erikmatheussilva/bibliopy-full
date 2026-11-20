@@ -3,6 +3,7 @@
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 from pathlib import Path
+import threading
 
 from PIL import ImageTk
 import pypdfium2 as pdfium
@@ -44,6 +45,8 @@ class InterfaceBiblioteca:
         self._botaoMenos: ttk.Button | None = None
         self._botaoMais: ttk.Button | None = None
         self._livroLeitorId: int | None = None
+        self._dadosPdfOnline: bytes | None = None
+        self._baixandoPdf = False
 
     def criarJanela(self) -> None:
         janela = tk.Tk()
@@ -220,15 +223,27 @@ class InterfaceBiblioteca:
             self._detalhes.set("Selecione um livro para ver os detalhes.")
             self._botaoAbrir.configure(text="Abrir livro")
             return
-        formato = "PDF no computador" if isinstance(livro, LivroPDFLocal) else "Página online"
-        localizacao = str(livro.caminhoArquivo) if isinstance(livro, LivroPDFLocal) else livro.url
+        formato = "PDF no computador" if isinstance(livro, LivroPDFLocal) else "PDF online"
+        localizacao = str(livro.caminhoArquivo) if isinstance(livro, LivroPDFLocal) else livro.urlPdf
         self._detalhes.set(f"{livro.exibirDados()}\nFormato: {formato}\nLocalização: {localizacao}")
-        self._botaoAbrir.configure(text="Ler no BiblioPy" if isinstance(livro, LivroPDFLocal) else "Abrir página online")
+        self._botaoAbrir.configure(text="Ler no BiblioPy")
 
     def abrirLivro(self) -> None:
         livro = self._livro_selecionado()
         if livro is None:
             messagebox.showinfo("Abrir livro", "Selecione um livro do acervo.", parent=self.janela)
+            return
+        if self._baixandoPdf:
+            return
+        if isinstance(livro, LivroOnline):
+            if self._janelaLeitor is not None and self._livroLeitorId == livro.id:
+                self._janelaLeitor.lift()
+                self._janelaLeitor.focus_set()
+                return
+            self._baixandoPdf = True
+            self._botaoAbrir.state(["disabled"])
+            self._status.set("Baixando PDF online...")
+            threading.Thread(target=self._baixar_pdf_online, args=(livro,), daemon=True).start()
             return
         try:
             aberto = self.biblioteca.abrirLivro(livro.id)
@@ -237,17 +252,36 @@ class InterfaceBiblioteca:
             return
         if isinstance(livro, LivroPDFLocal):
             self._abrir_leitor_pdf(livro, aberto)
-        elif not aberto:
-            messagebox.showwarning("Não foi possível abrir", "O sistema não encontrou um navegador disponível.", parent=self.janela)
 
-    def _abrir_leitor_pdf(self, livro: LivroPDFLocal, caminho: Path) -> None:
+    def _baixar_pdf_online(self, livro: LivroOnline) -> None:
+        try:
+            conteudo = livro.abrir()
+            mensagem = None
+        except (OSError, ValueError) as erro:
+            conteudo = None
+            mensagem = str(erro)
+        try:
+            self.janela.after(0, lambda: self._finalizar_download_pdf(livro, conteudo, mensagem))
+        except (RuntimeError, tk.TclError):
+            pass  # A janela pode ter sido fechada durante a transferência.
+
+    def _finalizar_download_pdf(self, livro: LivroOnline, conteudo: bytes | None, mensagem: str | None) -> None:
+        self._baixandoPdf = False
+        self._botaoAbrir.state(["!disabled"])
+        self._status.set("Pronto.")
+        if mensagem is not None:
+            messagebox.showerror("Não foi possível baixar o PDF", mensagem, parent=self.janela)
+        elif conteudo is not None:
+            self._abrir_leitor_pdf(livro, conteudo)
+
+    def _abrir_leitor_pdf(self, livro: LivroPDFLocal | LivroOnline, fonte: Path | bytes) -> None:
         """Abre uma janela do próprio BiblioPy para o PDF selecionado."""
         if self._janelaLeitor is not None and self._livroLeitorId == livro.id:
             self._janelaLeitor.lift()
             self._janelaLeitor.focus_set()
             return
         try:
-            documento = pdfium.PdfDocument(str(caminho))
+            documento = pdfium.PdfDocument(fonte if isinstance(fonte, bytes) else str(fonte))
             if len(documento) == 0:
                 documento.close()
                 raise ValueError("O PDF não contém páginas.")
@@ -265,6 +299,7 @@ class InterfaceBiblioteca:
         janela.protocol("WM_DELETE_WINDOW", self._fechar_leitor_pdf)
         self._janelaLeitor = janela
         self._documentoLeitor = documento
+        self._dadosPdfOnline = fonte if isinstance(fonte, bytes) else None
         self._livroLeitorId = livro.id
         self._paginaLeitor = 0
         self._zoomLeitor = 1.0
@@ -381,6 +416,7 @@ class InterfaceBiblioteca:
             self._janelaLeitor = None
         self._imagemLeitor = None
         self._livroLeitorId = None
+        self._dadosPdfOnline = None
 
     def _fechar_app(self) -> None:
         self._fechar_leitor_pdf()
@@ -407,7 +443,7 @@ class InterfaceBiblioteca:
                 ("ano", "Ano"),
                 ("idioma", "Idioma da edição"),
                 ("tipo", "Tipo de acesso"),
-                ("local", "PDF ou endereço"),
+                ("local", "Caminho ou URL do PDF"),
             )
         ):
             ttk.Label(formulario, text=rotulo, style="Bibliopy.TLabel").grid(row=linha, column=0, sticky="w", padx=(0, 14), pady=6)
@@ -417,7 +453,7 @@ class InterfaceBiblioteca:
                 entrada = ttk.Combobox(formulario, textvariable=variavel, values=GENEROS, state="readonly", width=42)
                 entrada.current(0)
             elif chave == "tipo":
-                entrada = ttk.Combobox(formulario, textvariable=variavel, values=("PDF local", "Página online"), state="readonly", width=42)
+                entrada = ttk.Combobox(formulario, textvariable=variavel, values=("PDF local", "PDF online"), state="readonly", width=42)
                 entrada.current(0)
             else:
                 entrada = ttk.Entry(formulario, textvariable=variavel, width=45)
@@ -453,8 +489,9 @@ class InterfaceBiblioteca:
                 if campos["tipo"].get() == "PDF local":
                     livro = LivroPDFLocal(**comum, caminhoArquivo=campos["local"].get())
                     livro.verificarArquivo()
-                else:
-                    livro = LivroOnline(**comum, url=campos["local"].get())
+                elif campos["tipo"].get() == "PDF online":
+                    endereco_pdf = campos["local"].get()
+                    livro = LivroOnline(**comum, url=endereco_pdf, urlPdf=endereco_pdf)
                 self.biblioteca.adicionarLivro(livro)
                 self.biblioteca.salvarDados(self.arquivoDados)
             except (ValueError, OSError) as erro:
